@@ -1,0 +1,117 @@
+import os
+import re
+import textract
+from google.colab import files
+
+# Prompt the user to select the PDF file
+uploaded = files.upload()
+pdf_file_path = next(iter(uploaded))
+
+# Convert PDF to text
+text_content = textract.process(pdf_file_path, encoding='utf-8')
+
+# Clean the text
+cleaned_text = text_content.decode('utf-8')
+
+# Find all unique occurrences of "CCTV-ICD-New" with a number identifier in the text
+cctv_new_items = re.findall(r'CCTV-ICD-New_(\d+)', cleaned_text, re.IGNORECASE)
+
+# Sort the CCTV-ICD-New items by number
+cctv_new_items.sort(key=int)
+
+# Find all unique occurrences of "CCTV-ICD-" with a number after the dash in the text
+cctv_items = re.findall(r'CCTV-ICD-(\d+)', cleaned_text, re.IGNORECASE)
+
+# Combine the CCTV-ICD-New and ACS-New items into a single list
+cctv_acs_items = list(set(cctv_new_items + cctv_items))
+
+# Sort the CCTV-ICD-New and ACS-New items
+cctv_acs_items.sort(key=int)
+
+# Count the total number of CCTV-ICD-New items
+cctv_new_count = len(cctv_new_items)
+
+# Get the last number of CCTV-ICD-New items
+last_cctv_new_number = max([int(item) for item in cctv_new_items]) if cctv_new_items else 0
+
+# Find all unique occurrences of power-related items
+power_items = re.findall(r'power\w*', cleaned_text, re.IGNORECASE)
+
+# Count the total number of power-related items
+power_count = len(power_items)
+
+# Find all unique occurrences of "ACS-New" with a number identifier in the text
+acs_new_items = re.findall(r'ACS-New_(\d+)', cleaned_text, re.IGNORECASE)
+
+# Combine the ACS-New and CCTV-ICD-New items into a single list
+acs_cctv_items = list(set(acs_new_items))
+
+# Sort the ACS-New and CCTV-ICD-New items
+acs_cctv_items.sort(key=int)
+
+# Count the total number of ACS-New items
+acs_new_count = len(acs_new_items)
+
+# Get the last number of ACS-New items
+last_acs_new_number = max([int(item) for item in acs_new_items]) if acs_new_items else 0
+
+# Create a file name for the response
+response_file_name = os.path.splitext(pdf_file_path)[0] + "_response.txt"
+
+# Save the response as a text file
+with open(response_file_name, 'w') as file:
+    # Check for mismatch in CCTV-ICD-New items
+    if last_cctv_new_number != cctv_new_count:
+        file.write("DISCLAIMER: The count of CCTV-ICD-New items might not be accurate due to potential issues with text extraction. Please manually verify the count and cross-reference with other sources if needed.\n\n")
+        file.write("CCTV-ICD-New items found in the text:\n")
+        for item in cctv_new_items:
+            file.write("- CCTV-ICD-New_{}\n".format(item))
+        file.write("\n")
+        file.write("Total count of CCTV-ICD-New items (Actual): {}\n".format(cctv_new_count))
+        file.write("Expected count of CCTV-ICD-New items: {}\n\n".format(last_cctv_new_number))
+    else:
+        file.write("CCTV-ICD-New items found in the text:\n")
+        for item in cctv_new_items:
+            file.write("- CCTV-ICD-New_{}\n".format(item))
+        file.write("\n")
+        file.write("Total count of CCTV-ICD-New items: {}\n\n".format(cctv_new_count))
+    
+    # Check for mismatch in CCTV-ICD-Number items
+    cctv_count = len(set(cctv_items))
+    file.write("CCTV-ICD-Number items found in the text:\n")
+    for item in sorted(set(cctv_items), key=int):
+        file.write("- CCTV-ICD-{}\n".format(item))
+    file.write("\n")
+    file.write("Total count of CCTV-ICD-Number items (Actual): {}\n\n".format(cctv_count))
+    
+    # Check for mismatch in ACS-New items
+    if last_acs_new_number != acs_new_count:
+        file.write("DISCLAIMER: The count of ACS-New items might not be accurate due to potential issues with text extraction. Please manually verify the count and cross-reference with other sources if needed.\n\n")
+        file.write("ACS-New items found in the text:\n")
+        for item in acs_new_items:
+            file.write("- ACS-New_{}\n".format(item))
+        file.write("\n")
+        file.write("Total count of ACS-New items (Actual): {}\n".format(acs_new_count))
+        file.write("Expected count of ACS-New items: {}\n\n".format(last_acs_new_number))
+    else:
+        file.write("ACS-New items found in the text:\n")
+        for item in acs_new_items:
+            file.write("- ACS-New_{}\n".format(item))
+        file.write("\n")
+        file.write("Total count of ACS-New items: {}\n\n".format(acs_new_count))
+    
+    # Add power-related items to the response
+    file.write("Power-related items found in the text:\n")
+    for item in power_items:
+        file.write("- {}\n".format(item))
+    file.write("\n")
+    file.write("Total count of power-related items: {}\n\n".format(power_count))
+
+# Download the response file
+files.download(response_file_name)
+
+# Print the path of the uploaded file
+print('\nPDF file uploaded:', pdf_file_path)
+
+# Remove the uploaded file
+os.remove(pdf_file_path)
